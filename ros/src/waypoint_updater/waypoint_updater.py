@@ -68,7 +68,7 @@ class WaypointUpdater(object):
         closest_idx = self.waypoint_tree.query([x, y], 1)[1]
 
         # Check if closest is ahead or behind vehicle
-        closest_coord = self.waypoint_2d[closest_idx]
+        closest_coord = self.waypoints_2d[closest_idx]
         prev_coord = self.waypoints_2d[closest_idx - 1]
 
         # Equation for hyperplane through closest_coords
@@ -97,7 +97,7 @@ class WaypointUpdater(object):
         # KDTree for searching for which waypoint is closest to the car
         self.base_waypoints = waypoints
         if not self.waypoints_2d:
-            self.waypoints_2d = [[ waypoint.pose.pose.position.x, waypoint.pose.pose.position.y ] for waypoint in waypoints.waypoint ]
+            self.waypoints_2d = [[ waypoint.pose.pose.position.x, waypoint.pose.pose.position.y ] for waypoint in waypoints.waypoints ]
             self.waypoint_tree = KDTree(self.waypoints_2d)
 
     def traffic_cb(self, msg):
