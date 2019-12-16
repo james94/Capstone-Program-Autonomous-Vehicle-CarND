@@ -29,6 +29,7 @@ LOOKAHEAD_WPS = 200 # Number of waypoints we will publish. You can change this n
 class WaypointUpdater(object):
     def __init__(self):
         rospy.init_node('waypoint_updater')
+        rospy.loginfo('Initializing WaypointUpdater node')
 
         rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)
         rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb)
@@ -44,45 +45,53 @@ class WaypointUpdater(object):
         self.waypoints_2d = None
         self.waypoint_tree = None
 
-        rospy.spin()
+        self.loop()
 
     def loop(self):
         # Rate attempts to loop at 50Hz since our final waypoints will be
         # published to waypoints_follower, autoware code that runs at 30Hz
 
         # set ros publishing frequency to 50Hz
+        rospy.loginfo('Setting loop rate to 50hz')
         rate = rospy.Rate(50)
-        # rate attempts to keep loop at 50Hz
         while not rospy.is_shutdown():
-            # do we have car's position and base waypoints
             if self.pose and self.base_waypoints:
                 # Get closest waypoint
                 closest_waypoint_idx = self.get_closest_waypoint_id()
+                rospy.loginfo('closest waypoint index = %s', closest_waypoint_idx)
                 self.publish_waypoints(closest_waypoint_idx)
             rate.sleep()
 
     def get_closest_waypoint_id(self):
         # Gets closest waypoint in front of car
+        rospy.loginfo('Getting closest waypoint id')
         x = self.pose.pose.position.x
+        rospy.loginfo('position x = %s', x)
         y = self.pose.pose.position.y
+        rospy.loginfo('position y = %s', y)
         closest_idx = self.waypoint_tree.query([x, y], 1)[1]
 
         # Check if closest is ahead or behind vehicle
+        rospy.loginfo('Get closest and prev coord')
         closest_coord = self.waypoints_2d[closest_idx]
         prev_coord = self.waypoints_2d[closest_idx - 1]
 
         # Equation for hyperplane through closest_coords
+        rospy.loginfo('Hyperplane through closest_coords')
         cl_vect = np.array(closest_coord)
         prev_vect = np.array(prev_coord)
         pos_vect = np.array([x, y])
 
-        val = np.dot(cl_vect - prev_vect, pos_vect - cl_vect)
-        
+        val = np.dot(cl_vect-prev_vect, pos_vect-cl_vect)
+
+        rospy.loginfo('Check is closest waypoint behind or in front of car')
         if val > 0:
+            rospy.loginfo('Closest waypoint behind car, get next coord'')
             closest_idx = (closest_idx + 1) % len(self.waypoints_2d)
         return closest_idx
 
     def publish_waypoints(self, closest_idx):
+        rospy.loginfo('Publishing 200 closest waypoints in front of car')
         lane = Lane()
         lane.header = self.base_waypoints.header
         lane.waypoints = self.base_waypoints.waypoints[closest_idx:closest_idx + LOOKAHEAD_WPS]
@@ -90,15 +99,21 @@ class WaypointUpdater(object):
 
     def pose_cb(self, msg):
         # Store car's incoming position 
+        rospy.loginfo("Receiving car's position")
         self.pose = msg
 
     def waypoints_cb(self, waypoints):
         # Receive car's incoming waypoints, create 2d waypoints, construct 
         # KDTree for searching for which waypoint is closest to the car
+        # Once the waypoint_tree is constructed, then select simulator track
+        rospy.loginfo('Constructing waypoint tree from base waypoints')
         self.base_waypoints = waypoints
+        rospy.loginfo('Check is 2d waypoints created, else create it for KDTree')
         if not self.waypoints_2d:
-            self.waypoints_2d = [[ waypoint.pose.pose.position.x, waypoint.pose.pose.position.y ] for waypoint in waypoints.waypoints ]
+            self.waypoints_2d = [[waypoint.pose.pose.position.x, waypoint.pose.pose.position.y] for waypoint in waypoints.waypoints]
+            rospy.loginfo('waypoints[0].pose.pose.position.x = %s', waypoints.waypoints[0].pose.pose.position.x)
             self.waypoint_tree = KDTree(self.waypoints_2d)
+            rospy.loginfo('waypoint_tree data = %s', self.waypoint_tree.data)
 
     def traffic_cb(self, msg):
         # TODO: Callback for /traffic_waypoint message. Implement
