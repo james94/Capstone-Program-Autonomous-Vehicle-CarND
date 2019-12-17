@@ -86,7 +86,7 @@ class WaypointUpdater(object):
 
         rospy.loginfo('Check is closest waypoint behind or in front of car')
         if val > 0:
-            rospy.loginfo('Closest waypoint behind car, get next coord'')
+            rospy.loginfo('Closest waypoint behind car, get next coord')
             closest_idx = (closest_idx + 1) % len(self.waypoints_2d)
         return closest_idx
 
