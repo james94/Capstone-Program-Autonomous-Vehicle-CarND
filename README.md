@@ -6,7 +6,21 @@ This Robotics Deep Learning application's goal is to safely maneuver a car aroun
 
 ![stopping_at_stop_light_line.jpg](./docs/images/stopping_at_stop_light_line.jpg)
 
-Check out my youtube video [End to End Self-Driving Car Application Demo]() where I test the car to maneuver around the virtual highway with traffic lights at each intersection while dealing with camera latency issues between the system integration simulator and the ROS system.
+This Robotics Deep Learning application also features a traffic light classifier that detects and recognizes traffic lights in the simulator.
+
+Here is an example of the traffic light classifier in action recognizing a red traffic light:
+
+![red traffic light](./docs/images/tl-detection/traffic-light0ad5390b-e2c7-4f5e-b413-5ecf50681b57.jpg)
+
+Here is an example of the traffic light classifier in action recognizing a green traffic light:
+
+![green traffic light](./docs/images/tl-detector/traffic-light9d3d35aa-81ff-477d-96ba-01c98d853ae1.jpg)
+
+Mainly we care about the red traffic light because that tells the car to stop driving and any traffic light color other than red
+tells the car to keep driving. For further practicing traffic light detection and recognition, check out this [object detection
+jupyter notebook](./docs/object_detection/CarND-Object-Detection-Lab.ipynb).
+
+Check out my youtube video [End to End Self-Driving Car Application Demo](https://youtu.be/VpctJ7Kvmv4) where I test the car to maneuver around the virtual highway with traffic lights at each intersection while dealing with camera latency issues between the system integration simulator and the ROS system.
 
 Overview
 ---
