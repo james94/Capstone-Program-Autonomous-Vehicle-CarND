@@ -14,7 +14,7 @@ Here is an example of the traffic light classifier in action recognizing a red t
 
 Here is an example of the traffic light classifier in action recognizing a green traffic light:
 
-![green traffic light](./docs/images/tl-detector/traffic-light9d3d35aa-81ff-477d-96ba-01c98d853ae1.jpg)
+![green traffic light](./docs/images/tl-detection/traffic-light9d3d35aa-81ff-477d-96ba-01c98d853ae1.jpg)
 
 Mainly we care about the red traffic light because that tells the car to stop driving and any traffic light color other than red
 tells the car to keep driving. For further practicing traffic light detection and recognition, check out this [object detection
