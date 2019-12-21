@@ -2,39 +2,74 @@
 
 [![Udacity - Self-Driving Car NanoDegree](https://s3.amazonaws.com/udacity-sdc/github/shield-carnd.svg)](http://www.udacity.com/drive)
 
-This Robotics Deep Learning application safely maneuvers a car around a virtual highway while stopping at red traffic lights by using perception, path planning and control modules through system integration. 
+This Robotics Deep Learning application's goal is to safely maneuver a car around a virtual highway while stopping at red traffic lights by using perception, path planning and control modules through system integration. 
 
 ![stopping_at_stop_light_line.jpg](./docs/images/stopping_at_stop_light_line.jpg)
 
-Check out my youtube video [End to End Self-Driving Car Application Demo]() on testing the car to drive around the virtual highway while stopping at red traffic lights for 1 lap.
+Check out my youtube video [End to End Self-Driving Car Application Demo]() where I test the car to maneuver around the virtual highway with traffic lights at each intersection while dealing with camera latency issues between the system integration simulator and the ROS system.
 
 Overview
 ---
 
-The purpose of this project was to implement a perception, path planning and control subsystem in Python within the current software infrastructure for an End to End Self-Driving Car Robotics application provided by Udacity. In this project, I learned to write ROS nodes to implement core functionality of the autonomous vehicle system, which included traffic light detection, control and waypoint following. For the next part of the project, I tested my code using Udacity's System Integration Simulator. Once the car drove safely around the virtual highway and stopped at red stop lights, as an individual I finished the capstone project. Alternatively, if one forms a team, then after they finish testing their code in the simulator, then as a group, they can submit their project to be run on Carla. Carla is Udacity's real self-driving car. However, I decided to submit my project as an individual, so I will be walking you through the steps to get the car driving safely only in the simulator. 
+The purpose of this project was to implement a perception, path planning and control subsystem in Python within the current software infrastructure for an End to End Self-Driving Car Robotics application provided by Udacity. In this project, one learns to write ROS nodes to implement core functionality of the autonomous vehicle system, which included traffic light detection, control and waypoint following. For the next part of the project, one tests their code using Udacity's System Integration Simulator. Once the car is able to drive safely around the virtual highway and stop at red street lights, one is done with the simulator portion of the project and as an individual can submit the project. The alternative extended project was to form groups in which after a group tests their code in the simulator and feel ready, they would be able to submit their project for Udacity to then deploy and test on Carla, Udacity's real self-driving car. Due to the limited time I had left to complete the project, I decided to work on the project as an individual. So, I will be walking you through my experience developing the self-driving car software and testing it in the simulator.
 
 Contents
 ---
 
-**TODO: Finish Contents**
+- **[config/](config/)**: contains configuration files from the Tensorflow Object Detection API for configuring the way you want your model to be trained
+- **[data/](data/)**: contains the simulator waypoints, udacity label map for traffic lights and other data. You could download your training data and evaluation data into this folder.
+- **[docs](docs)**: contains images for the README and helpful for debugging, getting started notebook on object detection using transfer learning
+- **[ros/](ros/)**: contains the ROS application, which consists of multiple ROS packages that make up the software for the end to end self-driving car from perception, path planning to controls
+- **[tensorflow/](tensorflow/)**: you may not be able to see this folder, but it is important, I used it for storing the object detection models I downloaded from the Tensorflow Object Detection API, which then were trained on the traffic light dataset, which were exported as frozen graphs, which are used in the tl_classifier.py script in the ROS application
+- **[Dockerfile](Dockerfile)**: Dockerfile can be used with docker build command to build a docker image with the software development environment for this project
+- **[export_inference_graph.py](export_inference_graph.py)**: brought in from Tensorflow Object Detection API, a Python script for exporting model checkpoints as frozen graphs that can be used for classification in the project. I used Tensorflow 1.4.0 to export the model as frozen graphs.
+- **[train.py](train.py)**: brought in from Tensorflow Object Detection API, a Python script for training a pretrained model on new data to specialize that model in a particular area, such as traffic light classification
+- **[requirements.txt](requirements.txt)**: contains the python modules and their versions needed for the project. You could also download python modules that are compatible with the versions specified.
+- **README**: explains project overview, contents, reflection of how I developed the software for the project, steps on how to run the demo
 
-- **[src/](src/)**: contains source code for the project
 - **[src/main.cpp](src/main.cpp)**: main file is executed after running **./run.sh** shell script. main.cpp acts as a web server that reads crosstrack error and speed data from the simulator client. Then it processes that data to calculate the steering angle and throttle, which is passed as a JSON message to the simulator to control the car's steering and speed.
-- **[docs](docs)**: contains images, backup code and research papers
-- **[build.sh](build.sh)**: creates build directory, compiles the project into an executable file **pid**
-- **[run.sh](run.sh)**: executes the **pid** program
-- **[clean.sh](clean.sh)**: removes the build folder and cleans the project
-- **[install-ubuntu.sh](install-ubuntu.sh)**: contains bash code to install the tools necessary to run the PID project on linux. This script can be run inside Windows 10 Bash on Ubuntu. There is a similar install script for mac.
-- **[CMakeLists.txt](CMakeLists.txt)**: contains directives and instructions describing the project's source files and targets (executable, library, or both). It is a build configuration file that cmake uses to generate makefiles. Then the make command is used to manage compiling the project, use a compiler to compile the program and generate executables. In our case, we retrieve the **pid** executable file, machine language, that runs the c++ program directly on the computer.
 
 Reflection
 ---
 
-**TODO: Finish Reflection**
+First, I will cover the self-driving car architecture used for this project at a high level and then a lower level with ROS.
 
-![autonomous-car-systems-int-2.png](data/docs/images/autonomous-car-systems-int-2.png)
+Here is a high level diagram of the autonomous vehicle system architecture used for this project:
 
+![autonomous-car-systems-int-2.png](./docs/images/autonomous-car-systems-int-2.png)
 
+In a self-driving car system, we work with sensors, perception, planning and control. For this project, I worked with various sources of data that come from sensors, such as position, velocity, acceleration and image data. For perception, I used components of the detection stack, such as traffic light detection and classification and even some concepts from lane detection. For planning, I used components from that stack, such as route planning and behavior planning. Finally, the control subsystem was important for controlling the car's throttle, steering and brake. The system integration is the process I went through to integrate these subystems together. 
+
+Here is a lower level diagram showing ROS nodes and topics used in this project:
+
+![final-project-ros-graph-v2.png](./docs/images/final-project-ros-graph-v2.png)
+
+### Code Structure
+
+All the code for this project is contained iin the `path/to/ros/src/` directory. The ROS packages that I did development in included: **tl_detector/**, **waypoint_updater/**, **twist_controller/**. 
+
+### Perception: Traffic Light Detection Node
+
+The tl_detector package contains a traffic light detection node `tl_detector.py` that ingests data from **/base_waypoints**, **/image_color** and **/current_pose** topics and outputs data into the **/traffic_waypoint** topic. My development focus in this package was to proccess traffic light data. So, working with the car's current position, base waypoints and traffic light data, I found the closest traffic light's stop line, classified the traffic light state using a pretrained SSD MobileNet V1 model and determined if the car needed to stop or not. I also worked on developing the traffic light classifier. Since I already some experience with developing models from scratch, I wanted to gain more hands on experience with transfer learning. So, I referenced the object detection lesson, then learned how to work with SSD MobileNet and SSD Inception models to train the models on traffic lights and export them as frozen graphs. The SSD MobileNet V1 frozen graph was then used in the `tl_classifier.py` script to detect and classify traffic lights in the simulator. Also, for tl_detector.py, I modified the camera images processing rate to be processed every 250 milliseconds and set a waypoint threshold to be 150 since I found that helps with the simulator camera latency issue. Feel free to reference the code on how I did this.
+
+### Datasets
+
+For deep learning part of perception, I knew I was going to need a dataset to train the model on traffic lights from the simulator. I did think about building my own dataset like I did for behavioral cloning, but then I thought it may be more convenient to use an already existing dataset created from the simulator. So, I did some research to see if anyone shared their simulator dataset. I found Alex Lechner's dataset for the simulator and the real world part of the self-driving car. I also found Vatsal's dataset too. So, I could focus on model training instead of dataset creation, I downloaded their already built datasets. Like I used Vatsal's dataset for training and Alex's dataset for evaluation/validation. I trained a SSD Inception V2 model and a SSD MobileNet V1 model on the traffic light dataset from the simulator. I found that through testing using my object detection notebook located in the docs folder, SSD MobileNet V1 performed better than SSD Inception V2. So, I chose SSD MobileNet for my model to use in the simulator for traffic light detection and classification.
+
+- [Alex Lechner's Traffic Light Dataset](https://github.com/alex-lechner/Traffic-Light-Classification#datasets) (both simulator and real world)
+- [Vatsal's Traffic Light Dataset](https://github.com/coldKnight/TrafficLight_Detection-TensorFlowAPI#get-the-dataset) (both simulator and real world)
+
+### Planning: Waypoint Updater Node
+
+The waypoint_updater package contains the waypoint updater node: `waypoint_updater.py`. This node updates the target velocity of each waypoint based on traffic light and obstacle detection data. This node gathers data from **/base_wayoints**, **/current_pose**, **/obstacle_waypoint** and **/traffic_waypoint** topics and outputs waypoints in front of car with velocities to the **/final_waypoints** topic. My development focus in the waypoint updater script was to get the closest waypoints in front of the car using KDTree, calculate the velocity and position at each waypoint while considering the deceleration calculation used on the velocity. Then I would make sure that data got publishedd to the final waypoints topic mentioned earlier. This node publishes final waypoints at 20Hz since I found through trial and error that that speed works well with the simulator camera latency issue.
+
+### Control: Drive-By-Wire Node
+
+The drive-by-wire (dbw) package contains files that control the vehicle: `dbw_node.py`, `twist_controller.py`. The DBW node ingests data from **/current_velocity**, **/twist_cmd** and **/vehicle/dbw_enable** topics and processes the data to publish throttle, brake and steering commands to the **/vehicle/throttle_cmd**, **/vehicle/brake_cmd** and **/vehicle/steering_cmd** topics. My development focus with the twist controller was to implement the control, which causes the car brake at maximum when the car was going really slow or gradually brake if the car is going faster than we want. This control also returned steering using the yaw_controller based on linear velocity, angular velocity and current veloity. It calculated the throttle for each stop using the PID controller and passing into that controller the velocity error and sample time. Sample time is just the current ROS time minus the last ROS time. The DBW node calls on the twist controller control method to retrieve the throttle, brake and steering to publish those commands to the vehicle at 50Hz. 50Hz is needed for Carla because Carla is expecting the commands to be published at 50Hz to her drive-by-wire (dbw) system.  
+
+### Simulator Communcation with ROS: Styx
+
+The `styx` and `styx_msgs` packages are used to provide a link between the simulator and ROS. Styx is a package that contains a server for communicating with the Unity simulator and a bridge to translate and publish simulator messages to ROS topics. styx_msgs includes custom message types used in this project.
 
 Setup Software Development Environment for Project
 ---
@@ -112,47 +147,57 @@ How to Run Demo
 
 **TODO: Finish How to Run Demo**
 
-Train SSD MobileNet v1
+### Build & Compile ROS Program
 
-~~~bash
-python train.py \
---logtostderr \
---train_dir=./tensorflow/models/train/ssd_mobilenet/ssd_mobilenet_v1_tl /
---pipeline_config_path=./config/ssd_mobilenet_v1_coco.config
+1\. Clone the project repository
 
-python export_inference_graph.py \
---input_type=image_tensor \
---pipeline_config_path=./config/ssd_mobilenet_v1_coco.config \
---trained_checkpoint_prefix=./tensorflow/models/train/ssd_mobilenet/ssd_mobilenet_v1_tl/model.ckpt-2000 \
---output_directory=./tensorflow/models/output/trained/ssd_mobilenet/ssd_inception_v1_tl/
-~~~
+```bash
+git clone https://github.com/james94/Capstone-Program-Autonomous-Vehicle-CarND
+```
 
-Train SSD Inception V2
+2\. Install python dependencies
 
-~~~bash
-python train.py \
---logtostderr \
---train_dir=./tensorflow/models/train/ssd_inception/ssd_inception_v2_tl /
---pipeline_config_path=./config/ssd_inception_v2_coco.config
+```bash
+cd CarND-Capstone
+pip install -r requirements.txt
+```
 
-python export_inference_graph.py \
---input_type=image_tensor \
---pipeline_config_path=./config/ssd_inception_v2_coco.config \
---trained_checkpoint_prefix=./tensorflow/models/train/ssd_inception/ssd_inception_v2_tl/model.ckpt-2000 \
---output_directory=./tensorflow/models/output/trained/ssd_inception/ssd_inception_v2_tl/
+3\. Make and run styx
+ 
+```bash
+cd ros
+catkin_make
+source devel/setup.sh
+roslaunch launch/styx.launch
+```
 
-2773: loss = 1.7590
+### Launch the Simulator and Connect the ROS Program
 
-model.ckpt-2773
+4\. Run the simulator
 
-4597: loss = 1.9408
+![system_integration_simulator.jpg](./docs/images/system_integration_simulator.jpg)
 
-4683 in 2 hours: loss = 2.02
+### Test ROS Self-Driving Car on Virtual Highway
 
-4424: loss = 1.9900
+Before you select the virtual highway, make sure to launch your ROS program. Wait
+about 5 seconds for your ROS program to load, then select the simulator level.
+Next press **camera**, there should be a checkbox.
 
-model.ckpt-4424conda
-~~~
+![waypoint_updater_partial_show_closest_waypoints.jpg](./docs/images/waypoint_updater_partial_show_closest_waypoints.jpg)
+
+If you have executed the ROS program, the car should start driving forward, stop at traffic lights
+if they are red and keep driving when safe. You may notice some lag from the simulator, this usually
+happens from running the camera. I hear this happens often for windows and mac users, but less often
+for linux users.
+
+To pass the project, I verified the requirements for the Udacity submission checklist:
+
+- I am able to launch the ROS program using the launch files provided in the repo.
+- My virtual car is able to follow waypoints smoothly (With the camera off in the simulator). When the camera is on, at certain points in the virtual highway my vehicle's ability to follow waypoints is disrupted.
+- My vehicle's top speed was 23.9 mph (38.4 kph), which adheres the top speed set for waypoints `twist.twist.linear.x`, which is 40kph.
+- My vehicle is able to stop at traffic lights at the appropriate time (I did notice the car did run through some red lights when the simulator lagged from camera latency)
+- In my Twist Controller control, I specify the code to reset the Throttle PID controller and stop the vehicle based on the state of `/vehicle/dbw_enabled`
+- Throttle, steering and brake commands are published at 50Hz
 
 Conclusion
 ---
@@ -185,104 +230,34 @@ Resources
 - Helpful GitHub Issues
   - [Tensorflow Object Detection API on Windows - error "MobuleNotFoundError: No module named 'utils'"](https://github.com/tensorflow/models/issues/3164)
 
+### Appendix: Training and Exporting Model
 
+Train SSD MobileNet v1
 
+~~~bash
+python train.py \
+--logtostderr \
+--train_dir=./tensorflow/models/train/ssd_mobilenet/ssd_mobilenet_v1_tl /
+--pipeline_config_path=./config/ssd_mobilenet_v1_coco.config
 
+python export_inference_graph.py \
+--input_type=image_tensor \
+--pipeline_config_path=./config/ssd_mobilenet_v1_coco.config \
+--trained_checkpoint_prefix=./tensorflow/models/train/ssd_mobilenet/ssd_mobilenet_v1_tl/model.ckpt-2000 \
+--output_directory=./tensorflow/models/output/trained/ssd_mobilenet/ssd_mobilenet_v1_tl/
+~~~
 
+Train SSD Inception V2
 
+~~~bash
+python train.py \
+--logtostderr \
+--train_dir=./tensorflow/models/train/ssd_inception/ssd_inception_v2_tl /
+--pipeline_config_path=./config/ssd_inception_v2_coco.config
 
-
-
-This is the project repo for the final project of the Udacity Self-Driving Car Nanodegree: Programming a Real Self-Driving Car. For more information about the project, see the project introduction [here](https://classroom.udacity.com/nanodegrees/nd013/parts/6047fe34-d93c-4f50-8336-b70ef10cb4b2/modules/e1a23b06-329a-4684-a717-ad476f0d8dff/lessons/462c933d-9f24-42d3-8bdc-a08a5fc866e4/concepts/5ab4b122-83e6-436d-850f-9f4d26627fd9).
-
-Please use **one** of the two installation options, either native **or** docker installation.
-
-### Native Installation
-
-* Be sure that your workstation is running Ubuntu 16.04 Xenial Xerus or Ubuntu 14.04 Trusty Tahir. [Ubuntu downloads can be found here](https://www.ubuntu.com/download/desktop).
-* If using a Virtual Machine to install Ubuntu, use the following configuration as minimum:
-  * 2 CPU
-  * 2 GB system memory
-  * 25 GB of free hard drive space
-
-  The Udacity provided virtual machine has ROS and Dataspeed DBW already installed, so you can skip the next two steps if you are using this.
-
-* Follow these instructions to install ROS
-  * [ROS Kinetic](http://wiki.ros.org/kinetic/Installation/Ubuntu) if you have Ubuntu 16.04.
-  * [ROS Indigo](http://wiki.ros.org/indigo/Installation/Ubuntu) if you have Ubuntu 14.04.
-* [Dataspeed DBW](https://bitbucket.org/DataspeedInc/dbw_mkz_ros)
-  * Use this option to install the SDK on a workstation that already has ROS installed: [One Line SDK Install (binary)](https://bitbucket.org/DataspeedInc/dbw_mkz_ros/src/81e63fcc335d7b64139d7482017d6a97b405e250/ROS_SETUP.md?fileviewer=file-view-default)
-* Download the [Udacity Simulator](https://github.com/udacity/CarND-Capstone/releases).
-
-### Docker Installation
-[Install Docker](https://docs.docker.com/engine/installation/)
-
-Build the docker container
-```bash
-docker build . -t capstone
-```
-
-Run the docker file
-```bash
-docker run -p 4567:4567 -v $PWD:/capstone -v /tmp/log:/root/.ros/ --rm -it capstone
-```
-
-### Port Forwarding
-To set up port forwarding, please refer to the "uWebSocketIO Starter Guide" found in the classroom (see Extended Kalman Filter Project lesson).
-
-### Usage
-
-1. Clone the project repository
-```bash
-git clone https://github.com/udacity/CarND-Capstone.git
-```
-
-2. Install python dependencies
-```bash
-cd CarND-Capstone
-pip install -r requirements.txt
-```
-3. Make and run styx
-```bash
-cd ros
-catkin_make
-source devel/setup.sh
-roslaunch launch/styx.launch
-```
-4. Run the simulator
-
-### Real world testing
-1. Download [training bag](https://s3-us-west-1.amazonaws.com/udacity-selfdrivingcar/traffic_light_bag_file.zip) that was recorded on the Udacity self-driving car.
-2. Unzip the file
-```bash
-unzip traffic_light_bag_file.zip
-```
-3. Play the bag file
-```bash
-rosbag play -l traffic_light_bag_file/traffic_light_training.bag
-```
-4. Launch your project in site mode
-```bash
-cd CarND-Capstone/ros
-roslaunch launch/site.launch
-```
-5. Confirm that traffic light detection works on real life images
-
-### Other library/driver information
-Outside of `requirements.txt`, here is information on other driver/library versions used in the simulator and Carla:
-
-Specific to these libraries, the simulator grader and Carla use the following:
-
-|        | Simulator | Carla  |
-| :-----------: |:-------------:| :-----:|
-| Nvidia driver | 384.130 | 384.130 |
-| CUDA | 8.0.61 | 8.0.61 |
-| cuDNN | 6.0.21 | 6.0.21 |
-| TensorRT | N/A | N/A |
-| OpenCV | 3.2.0-dev | 2.4.8 |
-| OpenMP | N/A | N/A |
-
-We are working on a fix to line up the OpenCV versions between the two.
-
-How To Run Demo
----
+python export_inference_graph.py \
+--input_type=image_tensor \
+--pipeline_config_path=./config/ssd_inception_v2_coco.config \
+--trained_checkpoint_prefix=./tensorflow/models/train/ssd_inception/ssd_inception_v2_tl/model.ckpt-2000 \
+--output_directory=./tensorflow/models/output/trained/ssd_inception/ssd_inception_v2_tl/
+~~~
