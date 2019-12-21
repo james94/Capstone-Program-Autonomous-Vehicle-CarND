@@ -58,8 +58,6 @@ class Bridge(object):
         self.publishers = {e.name: rospy.Publisher(e.topic, TYPE[e.type], queue_size=1)
                            for e in conf.publishers}
 
-        self.image_gap = 0
-
     def create_light(self, x, y, z, yaw, state):
         light = TrafficLight()
 
@@ -177,16 +175,13 @@ class Bridge(object):
         self.publishers['dbw_status'].publish(Bool(data))
 
     def publish_camera(self, data):
-        if self.image_gap >= 5:
-            self.image_gap = 0
-            imgString = data["image"]
-            image = PIL_Image.open(BytesIO(base64.b64decode(imgString)))
-            image_array = np.asarray(image)
+        self.image_gap = 0
+        imgString = data["image"]
+        image = PIL_Image.open(BytesIO(base64.b64decode(imgString)))
+        image_array = np.asarray(image)
 
-            image_message = self.bridge.cv2_to_imgmsg(image_array, encoding="rgb8")
-            self.publishers['image'].publish(image_message)
-        else:
-            self.image_gap += 1
+        image_message = self.bridge.cv2_to_imgmsg(image_array, encoding="rgb8")
+        self.publishers['image'].publish(image_message)
 
     def callback_steering(self, data):
         self.server('steer', data={'steering_angle': str(data.steering_wheel_angle_cmd)})
