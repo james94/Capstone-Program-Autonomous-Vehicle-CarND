@@ -16,10 +16,10 @@ from scipy.spatial import KDTree
 import numpy as np
 
 STATE_COUNT_THRESHOLD = 3
-# CAMERA_IMAGE_PROCESSING_RATE = 0.333 # process camera image every 333 milliseconds
+CAMERA_IMAGE_PROCESSING_RATE = 0.250 # process camera image every 250 milliseconds
 # don't process camera image if waypoints between car and stop line waypoint are 
 # below waypoint threshold 
-# WAYPOINT_THRESHOLD = 150
+WAYPOINT_THRESHOLD = 150
 
 class TLDetector(object):
     def __init__(self):
@@ -87,14 +87,13 @@ class TLDetector(object):
         """
         self.has_image = True
         # Get time elapsed, then check has 200 milliseconds passed, so we can process image
-        # self.time_elapsed = default_timer() - self.last_image_processed
-        # if self.time_elapsed < CAMERA_IMAGE_PROCESSING_RATE:
-        #     # rospy.loginfo("time_elapsed < CAMERA_IMAGE_PROCESSING_RATE: t.e. = %s", self.time_elapsed)
-        #     return
-        
-        # self.last_image_processed = default_timer()
+        self.time_elapsed = default_timer() - self.last_image_processed
+        if self.time_elapsed < CAMERA_IMAGE_PROCESSING_RATE:
+            # rospy.loginfo("time_elapsed < CAMERA_IMAGE_PROCESSING_RATE: t.e. = %s", self.time_elapsed)
+            return
 
         self.camera_image = msg
+        self.last_image_processed = default_timer()
         light_wp, state = self.process_traffic_lights()
         # rospy.loginfo("tl_detector p1: light_wp = %s", light_wp)
 
@@ -193,7 +192,7 @@ class TLDetector(object):
                 line_wp_idx = temp_wp_idx
                 # rospy.loginfo("line_wp_idx = %s", line_wp_idx)
 
-        if closest_light:
+        if closest_light and ( (line_wp_idx - car_wp_idx) <=  WAYPOINT_THRESHOLD):
             state = self.get_light_state(closest_light)
             # rospy.loginfo("return line_wp_idx = %s", line_wp_idx)
             return line_wp_idx, state
