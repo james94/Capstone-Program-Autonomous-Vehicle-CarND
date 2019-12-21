@@ -4,7 +4,7 @@
 
 This Robotics Deep Learning application safely maneuvers a car around a virtual highway while stopping at red traffic lights by using perception, path planning and control modules through system integration. 
 
-![stopping_at_stop_light_line.jpg](data/docs/images/stopping_at_stop_light_line.jpg)
+![stopping_at_stop_light_line.jpg](./docs/images/stopping_at_stop_light_line.jpg)
 
 Check out my youtube video [End to End Self-Driving Car Application Demo]() on testing the car to drive around the virtual highway while stopping at red traffic lights for 1 lap.
 
