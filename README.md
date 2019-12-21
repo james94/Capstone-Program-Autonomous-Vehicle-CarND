@@ -266,9 +266,13 @@ roslaunch launch/styx.launch
 
 Before you select the virtual highway, make sure to launch your ROS program. Wait
 about 5 seconds for your ROS program to load, then select the simulator level.
-Next press **camera**, there should be a checkbox.
+Next press **camera**, there should be a checkbox. You'll notice the Manual checkbox is
+checked, uncheck it once **camera** is checked.
 
 ![waypoint_updater_partial_show_closest_waypoints.jpg](./docs/images/waypoint_updater_partial_show_closest_waypoints.jpg)
+
+Note: In the image above, I was testing how 100, 150, 200 lookahead waypoints affected the simulator,
+I found the more I decreased lookahead waypoints, the better the car performed in the simulator.
 
 If you have executed the ROS program, the car should start driving forward, stop at traffic lights
 if they are red and keep driving when safe. You may notice some lag from the simulator, this usually
