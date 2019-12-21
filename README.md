@@ -230,8 +230,6 @@ Dependencies for Running Project Demo
 How to Run Demo
 ---
 
-**TODO: Finish How to Run Demo**
-
 ### Build & Compile ROS Program
 
 1\. Clone the project repository
