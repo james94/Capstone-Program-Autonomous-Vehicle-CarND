@@ -14,10 +14,10 @@ class TLClassifier(object):
         #TODO load classifier
         if is_site == True:
             # grab model trained on real world images
-            path_to_pretrained_model = 'models/ssd_mobilenet_site/'
+            path_to_pretrained_model = 'light_classification/models/ssd_mobilenet_site/'
         elif is_site == False:
             # grab model trained on simulator images
-            path_to_pretrained_model = 'models/ssd_mobilenet_sim/'
+            path_to_pretrained_model = 'light_classification/models/ssd_mobilenet_sim/'
 
         pretrained_model = path_to_pretrained_model + 'ssd_mobilenet_v1_coco_tl_2018_01_28/frozen_inference_graph.pb'
 
@@ -75,7 +75,7 @@ class TLClassifier(object):
 
         return box_coords
 
-    def draw_boxes(image, boxes, classes, scores):
+    def draw_boxes(self, image, boxes, classes, scores):
         """ Draw bounding boxes on the image """
         for i in range(len(boxes)):
             top, left, bot, right = boxes[i, ...]
@@ -94,7 +94,7 @@ class TLClassifier(object):
 
         """
         #TODO implement light color prediction
-        rospy.logwarn("get_classification called")
+        # rospy.logwarn("get_classification called")
         image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         image_np = np.expand_dims( np.asarray(image_rgb, dtype=np.uint8), 0)
 
@@ -103,9 +103,9 @@ class TLClassifier(object):
             (boxes, scores, classes) = sess.run([self.detection_boxes, self.detection_scores, self.detection_classes],
                                                  feed_dict={self.image_tensor: image_np})
 
-            rospy.logwarn("boxes = %s", boxes)
-            rospy.logwarn("scores = %s", scores)
-            rospy.logwarn("classes = %s", classes)
+            # rospy.logwarn("boxes = %s", boxes)
+            # rospy.logwarn("scores = %s", scores)
+            # rospy.logwarn("classes = %s", classes)
 
             # Remove unnecessary dimensions
             boxes = np.squeeze(boxes)
@@ -123,20 +123,22 @@ class TLClassifier(object):
             save_dst_path = os.path.join(home, 'GitHub', 'Capstone-Program-Autonomous-Vehicle-CarND', 'docs', 'images', 'tl-detection')
             if not os.path.exists(save_dst_path):
                 os.makedirs(save_dst_path)
-            tl_filename = 'traffic-light' + uuid.uuid4() + '.jpg'
+            tl_filename = 'traffic-light' + str(uuid.uuid4()) + '.jpg'
             save_file_dst = os.path.join(save_dst_path, tl_filename)
             cv2.imwrite(save_file_dst, image)
 
         # check if traffic lights were not detected, then return light state unknown
-        rospy.logwarn("length of scores = %s", len(scores))
+        # rospy.logwarn("length of scores = %s", len(scores))
         if len(scores) <= 0:
             traffic_light_class_id = 4
+            rospy.logwarn("Traffic Light UNKNOWN")
             traffic_light_state = TrafficLight.UNKNOWN
+            rospy.logwarn("traffic_light_state = %s", traffic_light_state)
             return traffic_light_state
 
         # traffic light detected, return light state for green, yellow, red classification
         traffic_light_class_id = int(classes[np.argmax(scores)])
-        rospy.logwarn("traffic light class id = %s", traffic_light_class_id)
+        # rospy.logwarn("traffic light class id = %s", traffic_light_class_id)
 
         if traffic_light_class_id == 1:
             rospy.logwarn("Traffic Light GREEN")
