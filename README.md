@@ -12,6 +12,10 @@ Here is an example of the traffic light classifier in action recognizing a red t
 
 ![red traffic light](./docs/images/tl-detection/traffic-light0ad5390b-e2c7-4f5e-b413-5ecf50681b57.jpg)
 
+Here is an example of the traffic light classifier in action recognizing a yellow traffic light:
+
+![yellow traffic light](./docs/images/traffic-light-yellow92e837ee-e7e8-4695-9122-69067de86ff0.jpg)
+
 Here is an example of the traffic light classifier in action recognizing a green traffic light:
 
 ![green traffic light](./docs/images/tl-detection/traffic-light9d3d35aa-81ff-477d-96ba-01c98d853ae1.jpg)
@@ -64,7 +68,56 @@ All the code for this project is contained iin the `path/to/ros/src/` directory.
 
 ### Perception: Traffic Light Detection Node
 
-The tl_detector package contains a traffic light detection node `tl_detector.py` that ingests data from **/base_waypoints**, **/image_color** and **/current_pose** topics and outputs data into the **/traffic_waypoint** topic. My development focus in this package was to proccess traffic light data. So, working with the car's current position, base waypoints and traffic light data, I found the closest traffic light's stop line, classified the traffic light state using a pretrained SSD MobileNet V1 model and determined if the car needed to stop or not. I also worked on developing the traffic light classifier. Since I already some experience with developing models from scratch, I wanted to gain more hands on experience with transfer learning. So, I referenced the object detection lesson, then learned how to work with SSD MobileNet and SSD Inception models to train the models on traffic lights and export them as frozen graphs. The SSD MobileNet V1 frozen graph was then used in the `tl_classifier.py` script to detect and classify traffic lights in the simulator. Also, for tl_detector.py, I modified the camera images processing rate to be processed every 250 milliseconds and set a waypoint threshold to be 150 since I found that helps with the simulator camera latency issue. Feel free to reference the code on how I did this.
+The tl_detector package contains a traffic light detection node `tl_detector.py` that ingests data from **/base_waypoints**, **/image_color** and **/current_pose** topics and outputs data into the **/traffic_waypoint** topic. My development focus in this package was to proccess traffic light data. So, working with the car's current position, base waypoints and traffic light data, I found the closest traffic light's stop line, classified the traffic light state using a pretrained SSD MobileNet V1 model and determined if the car needed to stop or not. I also worked on developing the traffic light classifier. Since I already some experience with developing models from scratch, I wanted to gain more hands on experience with transfer learning. So, I referenced the object detection lesson, then learned how to work with SSD MobileNet and SSD Inception models to train the models on traffic lights and export them as frozen graphs. The SSD MobileNet V1 frozen graph was then used in the `tl_classifier.py` script to detect and classify traffic lights in the simulator. Also, for tl_detector.py, I modified the **camera images processing rate** to be processed every **250 milliseconds**. I set a **waypoint threshold to be 150**, so the traffic light classifier is only used once the car is within 150 waypoints of the traffic light. I applied a camera image processing rate and waypoint threshold to help with the **simulator camera latency issue**. I found these updates to the code helped with decreasing lag experienced in the simulator, but there was still lag in some parts of the simulator. Feel free to reference the code on how I did this below.
+
+Adjusting the camera image processing rate and waypoint threshold should help with the camera latency issues in the simulator:
+
+~~~python
+# tl-detector.py 
+# tuning the camera image processing rate and waypoint threshold
+
+CAMERA_IMAGE_PROCESSING_RATE = 0.250 # process camera image every 250 milliseconds
+# don't process camera image if waypoints between car and stop line waypoint are 
+# below waypoint threshold 
+WAYPOINT_THRESHOLD = 150
+
+## other code inside TLDetector class
+# __init__()
+def __init__(self):
+    # set to 0 since we haven't processed an image yet
+    self.last_image_processed = 0
+
+# image_cb() apply camera image processing rate
+def image_cb(self, msg):
+
+    # the current code ...
+
+    # Get time elapsed, then check has 250 milliseconds passed, so we can process image
+    self.time_elapsed = default_timer() - self.last_image_processed
+    if self.time_elapsed < CAMERA_IMAGE_PROCESSING_RATE:
+        # rospy.loginfo("time_elapsed < CAMERA_IMAGE_PROCESSING_RATE: t.e. = %s", self.time_elapsed)
+        return
+    
+    self.camera_image = msg
+    self.last_image_processed = default_timer()
+
+    # remaining code ...
+
+# process_traffic_lights() apply waypoint threshold
+def process_traffic_lights(self):
+
+    # the current code ...
+
+    # Start using traffic light classifier once car is within waypoint threshold from traffic light
+    if closest_light and ( (line_wp_idx - car_wp_idx) <= WAYPOINT_THRESHOLD ):
+        state = self.get_light_state(closest_light)
+        # rospy.loginfo("return line_wp_idx = %s", line_wp_idx)
+        return line_wp_idx, state  
+
+    # remaining code ...
+~~~
+
+You can also look at the code directly **[tl_detector.py](ros/src/tl_detector/tl_detector.py)**
 
 ### Datasets
 
@@ -75,7 +128,25 @@ For deep learning part of perception, I knew I was going to need a dataset to tr
 
 ### Planning: Waypoint Updater Node
 
-The waypoint_updater package contains the waypoint updater node: `waypoint_updater.py`. This node updates the target velocity of each waypoint based on traffic light and obstacle detection data. This node gathers data from **/base_wayoints**, **/current_pose**, **/obstacle_waypoint** and **/traffic_waypoint** topics and outputs waypoints in front of car with velocities to the **/final_waypoints** topic. My development focus in the waypoint updater script was to get the closest waypoints in front of the car using KDTree, calculate the velocity and position at each waypoint while considering the deceleration calculation used on the velocity. Then I would make sure that data got publishedd to the final waypoints topic mentioned earlier. This node publishes final waypoints at 20Hz since I found through trial and error that that speed works well with the simulator camera latency issue.
+The waypoint_updater package contains the waypoint updater node: `waypoint_updater.py`. This node updates the target velocity of each waypoint based on traffic light and obstacle detection data. This node gathers data from **/base_wayoints**, **/current_pose**, **/obstacle_waypoint** and **/traffic_waypoint** topics and outputs waypoints in front of car with velocities to the **/final_waypoints** topic. My development focus in the waypoint updater script was to get the closest waypoints in front of the car using KDTree, calculate the velocity and position at each waypoint while considering the deceleration calculation used on the velocity. Then I would make sure that data got publishedd to the final waypoints topic mentioned earlier. This **node publishes 25 lookahead waypoints to the final waypoints topic at 20Hz** since I found through trial and error that that speed works well with the **simulator camera latency issue**. I noticed as I decreased the lookahead waypoints and decreased the rate at which those waypoints are published, the simulator lag decreased allowing for the car to drive better. Although this helped, it didn't make the problem go away.
+
+Adjusting the ROS publishing rate for closest waypoints in front of car for dealing with simulator camera latency:
+
+~~~python
+# Setting the amount of lookahead waypoints in front of car to smaller number
+LOOKAHEAD_WPS = 25 # init = 200 Number of waypoints we will publish. You can change this number
+
+# WaypointUpdater class
+
+# loop() set publishing rate to 20Hz using rospy.Rate()
+def loop(self):
+    rate = rospy.Rate(20)
+    while not rospy.is_shutdown():
+        # the current code ...
+        rate.sleep()
+~~~
+
+You can also look at the code directly **[waypoint_updater.py](ros/src/waypoint_updater/waypoint_updater.py)**
 
 ### Control: Drive-By-Wire Node
 
@@ -218,6 +289,12 @@ Conclusion
 
 Congratulations! You just ran the demo for an End to End Self-Driving Car software application with a Unity simulator. We followed waypoints on the virtual highway using the Path Planner, recognized red traffic lights using Traffic Light Classification, adjusted the car's brake, speed and steering using a Twist Controller. By performing system integration to integrate the vehicle subsystems: perception, path planning and control, the car was able to drive safely around the virtual highway and stop at traffic lights if they are red else the car keeps going. The result was that the car was able to drive safely around the virtual highway through all 8 traffic light intersections while stopping when needed. The most challenging part of the project was tuning the ROS software system to minimize camera latency coming from the Unity simulator. The camera data was needed, so we could use our traffic light classifier to detect and classify traffic light state, allowing the car to know when to stop at a traffic light. So, the speed of camera image dataflow between the ROS system and the simulator was critical, so the car could make timely stops at traffic lights that would be safe along with driving safe on the virtual highway. With the proper tuning to the ROS system discussed in the reflection earlier, I was able to get rid of most of lag in the simulator. The other most challenging part of the project was working with multiple different versions of Tensorflow on my local laptop. Since I had limited time to finish this project, I decided to work on it as an individual and mainly focus on getting the car to drive safely in the virtual environment. If I had more time, I would have formed a team and tested my ROS software on Udacity's real self-driving car to see if it drove safely in their real test environment.
 
+If I had more time, I would have further tried to resolve the camera latency issues happening in the simulator on Windows 10:
+
+![green_mountains_camera_latency_issues.jpg](./docs/images/green_mountains_camera_latency_issues.jpg)
+
+When the car approached these green mountains, I noticed the lag was really bad. There were other parts of virtual highway that also experienced heavy latency. From my research, I found some people who had the software development environment installed on native linux with the remedies we discussed earlier for minimizing camera latency were able to resolve these latency issues. However, I noticed a lot of Udacity students like myself who only used the Ubuntu 16.04 Virtual Machine provided by Udacity running on Windows 10 or Mac OS X experienced lag issues in the simulator even after applying the remedies for reducing camera latency. I even noticed there are issues open on GitHub about the camera latency issues: **[turning on the camera slows car down so auto-mode gets messed up](https://github.com/udacity/CarND-Capstone/issues/266)**. Overall, I would recommend this project as it is a great experience for learning how to build the software for an end to end self-driving car robotics and deep learning application.
+
 Resources
 ---
 
@@ -235,6 +312,7 @@ Resources
 - Helpful GitHub Repositories
   - [alex-lechner: Traffic Light Classification](https://github.com/alex-lechner/Traffic-Light-Classification)
   - [josehoras: Capstone: Program an Autonomous Vehicle](https://github.com/josehoras/Self-Driving-Car-Nanodegree-Capstone)
+  - [rosocz: CarND-Capstone](https://github.com/rosocz/CarND-Capstone)
   - [Tensorflow Object Detection API](https://github.com/tensorflow/models/tree/master/research/object_detection)
   - [Protocol Buffers v3.4.0](https://github.com/protocolbuffers/protobuf/releases/tag/v3.4.0) needed for Windows 10!
 
@@ -244,7 +322,29 @@ Resources
 - Helpful GitHub Issues
   - [Tensorflow Object Detection API on Windows - error "MobuleNotFoundError: No module named 'utils'"](https://github.com/tensorflow/models/issues/3164)
 
-### Appendix: Training and Exporting Model
+### Appendix A: Library/Driver Information
+
+Outside of `requirements.txt`, I have included information on my driver/library versions used on my computer
+for training pretrained tensorflow object detection models. This software should be compatible with Carla,
+but I have not tested it on Carla. With Python 3.6.9 on Windows 10, I tested training an SSD MobileNet V1 model on traffic lights on my and exported it as a frozen inference graph using Tensorflow GPU 1.4.0. Then I transferred
+that model over to the Ubuntu 16.04 Virtual Machine provided by Udacity and the model worked with Tensorflow
+1.3.0 using Python 2.7.12.
+
+| Name | Carla | ASUS ROG Zephyrus S |
+| ---- | ----- | ------------------- |
+| OS | Ubuntu 16.04 | Windows 10 |
+| Nvidia Driver | 384.130 | 441.66 |
+| CUDA | 8.0.61 | 10.2 and 8.0.60 |
+| cuDNN | 6.0.21 | 6.0.21 |
+| Tensorflow GPU | 1.3.0 | 1.4.0 |
+
+To install Tensorflow GPU 1.4.0 on my laptop, I needed CUDA 8 and cuDNN 6.0.21. Why Tensorflow GPU 1.4.0 instead of 1.3.0?
+From reading, I found out that Tensorflow GPU 1.4.0 supported creating frozen inference graphs, but Tensorflow GPU 1.3.0
+did not. Tensorflow GPU 1.4.0 is compatible with Tensorflow GPU 1.3.0. They use the same version of CUDA and cuDNN. So, if
+you already trained a model with a higher version of Tensorflow GPU, just make sure that you downgrade to Tensorflow GPU 1.4.0
+to export the frozen inference graph.
+
+### Appendix B: Training and Exporting Model
 
 Train SSD MobileNet v1
 
@@ -275,3 +375,4 @@ python export_inference_graph.py \
 --trained_checkpoint_prefix=./tensorflow/models/train/ssd_inception/ssd_inception_v2_tl/model.ckpt-2000 \
 --output_directory=./tensorflow/models/output/trained/ssd_inception/ssd_inception_v2_tl/
 ~~~
+
