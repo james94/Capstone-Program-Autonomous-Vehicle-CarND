@@ -1,20 +1,25 @@
 from styx_msgs.msg import TrafficLight
 import tensorflow as tf
 import numpy as np
+import uuid
+import os
 import cv2
 import rospy
 
-TRAFFIC_LIGHTS = ['Green', 'Yellow', 'Red', 'Unknown']
+TRAFFIC_LIGHTS = ['Green', 'Red', 'Yellow', 'Unknown']
+home = os.path.expanduser("~")
 
 class TLClassifier(object):
     def __init__(self, is_site):
         #TODO load classifier
         if is_site == True:
-            path_to_pretrained_model = 'light_classification/models/site_model/'
+            # grab model trained on real world images
+            path_to_pretrained_model = 'light_classification/models/ssd_mobilenet_site/'
         elif is_site == False:
-            path_to_pretrained_model = 'light_classification/models/sim_model/'
+            # grab model trained on simulator images
+            path_to_pretrained_model = 'light_classification/models/ssd_mobilenet_sim/'
 
-        pretrained_model = path_to_pretrained_model + 'ssd_mobilenet_v1_coco_11_06_2017/frozen_inference_graph.pb'
+        pretrained_model = path_to_pretrained_model + 'ssd_mobilenet_v1_coco_tl_2018_01_28/frozen_inference_graph.pb'
 
         # load pretrained model graph
         self.detection_graph = self.load_graph(pretrained_model)
@@ -70,26 +75,13 @@ class TLClassifier(object):
 
         return box_coords
 
-    def draw_boxes(self, image, boxes, classes, scores):
+    def draw_boxes(image, boxes, classes, scores):
         """ Draw bounding boxes on the image """
-        box_bgr_color = (255, 0, 0)
-        thickness = 2
-
-        font = cv2.FONT_HERSHEY_SIMPLEX
-        fontScale = 0.8
-        text_bgr_color = (200, 0, 0)
-        line_type = cv2.LINE_AA
         for i in range(len(boxes)):
-            bot, left, top, right = boxes[i, ...]
-            start_point = (left, top)
-            end_point = (right, bot)
-            cv2.rectangle(image, start_point, end_point, box_bgr_color, thickness)
-
-            class_id = int(classes[i]) - 1
-            light_prediction = str(int(scores[i]*100)) + '%'
-            text = TRAFFIC_LIGHTS[class_id] + ': ' + light_prediction
-            org = (left, int(top - 5))
-            cv2.putText(image, text, org, font, fontScale, text_bgr_color, thickness, line_type)
+            top, left, bot, right = boxes[i, ...]
+            cv2.rectangle(image, (int(left), int(top)), (int(right), int(bot)), (255, 255, 255), 5)
+            text = TRAFFIC_LIGHTS[int(classes[i])-1] + ': ' + str(int(scores[i]*100)) + '%'
+            cv2.putText(image, text, (int(left - 15), int(top - 15)), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2, cv2.LINE_AA)
 
     def get_classification(self, image, save_img):
         """Determines the color of the traffic light in the image
@@ -120,7 +112,7 @@ class TLClassifier(object):
             scores = np.squeeze(scores)
             classes = np.squeeze(classes)
 
-            confidence_cutoff = 0.7
+            confidence_cutoff = 0.4
             # Filter boxes with a confidence score less than `confidence_cutoff`
             boxes, scores, classes = self.filter_boxes(confidence_cutoff, boxes, scores, classes)
 
@@ -128,7 +120,12 @@ class TLClassifier(object):
             height, width, _ = image.shape
             box_coords = self.to_image_coords(boxes, height, width)
             self.draw_boxes(image, box_coords, classes, scores)
-            cv2.imwrite('Capstone-Program-Autonomous-Vehicle-CarND/docs/images/detection/traffic-light.jpg', image)
+            save_dst_path = os.path.join(home, 'GitHub', 'Capstone-Program-Autonomous-Vehicle-CarND', 'docs', 'images', 'tl-detection')
+            if not os.path.exists(save_dst_path):
+                os.makedirs(save_dst_path)
+            tl_filename = 'traffic-light' + uuid.uuid4() + '.jpg'
+            save_file_dst = os.path.join(save_dst_path, tl_filename)
+            cv2.imwrite(save_file_dst, image)
 
         # check if traffic lights were not detected, then return light state unknown
         rospy.logwarn("length of scores = %s", len(scores))
@@ -142,11 +139,14 @@ class TLClassifier(object):
         rospy.logwarn("traffic light class id = %s", traffic_light_class_id)
 
         if traffic_light_class_id == 1:
+            rospy.logwarn("Traffic Light GREEN")
             traffic_light_state = TrafficLight.GREEN
         elif traffic_light_class_id == 2:
-            traffic_light_state = TrafficLight.YELLOW
-        elif traffic_light_class_id == 3:
+            rospy.logwarn("Traffic Light RED")
             traffic_light_state = TrafficLight.RED
+        elif traffic_light_class_id == 3:
+            rospy.logwarn("Traffic Light YELLOW")
+            traffic_light_state = TrafficLight.YELLOW
 
         rospy.logwarn("traffic_light_state = %s", traffic_light_state)
         return traffic_light_state
