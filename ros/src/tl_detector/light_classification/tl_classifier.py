@@ -14,10 +14,10 @@ class TLClassifier(object):
         #TODO load classifier
         if is_site == True:
             # grab model trained on real world images
-            path_to_pretrained_model = 'light_classification/models/ssd_mobilenet_site/'
+            path_to_pretrained_model = 'models/ssd_mobilenet_site/'
         elif is_site == False:
             # grab model trained on simulator images
-            path_to_pretrained_model = 'light_classification/models/ssd_mobilenet_sim/'
+            path_to_pretrained_model = 'models/ssd_mobilenet_sim/'
 
         pretrained_model = path_to_pretrained_model + 'ssd_mobilenet_v1_coco_tl_2018_01_28/frozen_inference_graph.pb'
 
